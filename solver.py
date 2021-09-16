@@ -1,3 +1,4 @@
+import pdb
 from model import Generator
 from model import Discriminator
 from torch.autograd import Variable
@@ -521,6 +522,7 @@ class Solver(object):
                 print ('Decayed learning rates, g_lr: {}, d_lr: {}.'.format(g_lr, d_lr))
 
     def test(self):
+        pdb.set_trace()
         """Translate images using StarGAN trained on a single dataset."""
         # Load the trained generator.
         self.restore_model(self.test_iters)
