@@ -1,6 +1,6 @@
+from generic_solver import GenericSolver
 from model import Generator
 from model import Discriminator
-from torch.autograd import Variable
 from torchvision.utils import save_image
 import torch
 import torch.nn.functional as F
@@ -10,7 +10,7 @@ import time
 import datetime
 
 
-class Solver(object):
+class Solver(GenericSolver):
     """Solver for training and testing StarGAN."""
 
     def __init__(self, celeba_loader, rafd_loader, config):
@@ -85,15 +85,6 @@ class Solver(object):
             
         self.G.to(self.device)
         self.D.to(self.device)
-
-    def print_network(self, model, name):
-        """Print out the network information."""
-        num_params = 0
-        for p in model.parameters():
-            num_params += p.numel()
-        print(model)
-        print(name)
-        print("The number of parameters: {}".format(num_params))
 
     def restore_model(self, resume_iters):
         """Restore the trained generator and discriminator."""
