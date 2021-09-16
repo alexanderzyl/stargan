@@ -47,3 +47,13 @@ class GenericSolver(object, metaclass=ABCMeta):
 
             c_trg_list.append(c_trg.to(self.device))
         return c_trg_list
+
+    def build_tensorboard(self, log_dir):
+        """Build a tensorboard logger."""
+        from logger import Logger
+        self.logger = Logger(log_dir)
+
+    def denorm(self, x):
+        """Convert the range from [-1, 1] to [0, 1]."""
+        out = (x + 1) / 2
+        return out.clamp_(0, 1)

@@ -1,9 +1,10 @@
-import os
 import argparse
+import os
 
-from simple_solver import SimpleSolver
-from data_loader import get_loader
 from torch.backends import cudnn
+
+from data_loader import get_loader
+from z_solver import ZSolver
 
 
 def str2bool(v):
@@ -31,7 +32,7 @@ def main(config):
         'CelebA', config.mode, config.num_workers)
 
     # Solver for training and testing StarGAN.
-    solver = SimpleSolver(loader, config)
+    solver = ZSolver(loader, config)
 
     if config.mode == 'train':
         solver.train()
