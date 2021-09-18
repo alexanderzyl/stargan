@@ -107,11 +107,8 @@ class ZTrainer:
             self.solver.d_optimizer.step()
 
             # Logging.
-            loss = {}
-            loss['D/loss_real'] = d_loss_real.item()
-            loss['D/loss_fake'] = d_loss_fake.item()
-            loss['D/loss_cls'] = d_loss_cls.item()
-            loss['D/loss_gp'] = d_loss_gp.item()
+            loss = {'D/loss_real': d_loss_real.item(), 'D/loss_fake': d_loss_fake.item(),
+                    'D/loss_cls': d_loss_cls.item(), 'D/loss_gp': d_loss_gp.item()}
 
             # =================================================================================== #
             #                               3. Train the generator                                #
@@ -169,10 +166,10 @@ class ZTrainer:
 
             # Save model checkpoints.
             if (i + 1) % self.solver.model_save_step == 0:
-                G_path = os.path.join(self.solver.model_save_dir, '{}-G.ckpt'.format(i + 1))
-                D_path = os.path.join(self.solver.model_save_dir, '{}-D.ckpt'.format(i + 1))
-                torch.save(self.solver.G.state_dict(), G_path)
-                torch.save(self.solver.D.state_dict(), D_path)
+                g_path = os.path.join(self.solver.model_save_dir, '{}-G.ckpt'.format(i + 1))
+                d_path = os.path.join(self.solver.model_save_dir, '{}-D.ckpt'.format(i + 1))
+                torch.save(self.solver.G.state_dict(), g_path)
+                torch.save(self.solver.D.state_dict(), d_path)
                 print('Saved model checkpoints into {}...'.format(self.solver.model_save_dir))
 
             # Decay learning rates.
