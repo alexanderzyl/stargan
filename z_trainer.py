@@ -84,57 +84,15 @@ class ZTrainer:
             #                             2. Train the discriminator                              #
             # =================================================================================== #
 
-            # Compute loss with real images.
-            out_src, out_cls = self.solver.D(self.x_real)
-            d_loss_real = - torch.mean(out_src)
-            d_loss_cls = self.solver.classification_loss(out_cls, self.label_org)
-
-            # Compute loss with fake images.
-            x_fake = self.solver.G(self.x_real, self.c_trg)
-            out_src, out_cls = self.solver.D(x_fake.detach())
-            d_loss_fake = torch.mean(out_src)
-
-            # Compute loss for gradient penalty.
-            self.alpha = torch.rand(self.x_real.size(0), 1, 1, 1)
-            x_hat = (self.alpha * self.x_real.data + (1 - self.alpha) * x_fake.data).requires_grad_(True)
-            out_src, _ = self.solver.D(x_hat)
-            d_loss_gp = self.solver.gradient_penalty(out_src, x_hat)
-
-            # Backward and optimize.
-            d_loss = d_loss_real + d_loss_fake + self.solver.lambda_cls * d_loss_cls + self.solver.lambda_gp * d_loss_gp
-            self.solver.reset_grad()
-            d_loss.backward()
-            self.solver.d_optimizer.step()
-
-            # Logging.
-            loss = {'D/loss_real': d_loss_real.item(), 'D/loss_fake': d_loss_fake.item(),
-                    'D/loss_cls': d_loss_cls.item(), 'D/loss_gp': d_loss_gp.item()}
+            loss = self.train_discriminator()
 
             # =================================================================================== #
             #                               3. Train the generator                                #
             # =================================================================================== #
 
             if (i + 1) % self.solver.n_critic == 0:
-                # Original-to-target domain.
-                x_fake = self.solver.G(self.x_real, self.c_trg)
-                out_src, out_cls = self.solver.D(x_fake)
-                g_loss_fake = - torch.mean(out_src)
-                g_loss_cls = self.solver.classification_loss(out_cls, self.label_trg)
-
-                # Target-to-original domain.
-                x_reconst = self.solver.G(x_fake, self.c_org)
-                g_loss_rec = torch.mean(torch.abs(self.x_real - x_reconst))
-
-                # Backward and optimize.
-                g_loss = g_loss_fake + self.solver.lambda_rec * g_loss_rec + self.solver.lambda_cls * g_loss_cls
-                self.solver.reset_grad()
-                g_loss.backward()
-                self.solver.g_optimizer.step()
-
-                # Logging.
-                loss['G/loss_fake'] = g_loss_fake.item()
-                loss['G/loss_rec'] = g_loss_rec.item()
-                loss['G/loss_cls'] = g_loss_cls.item()
+                g_loss = self.train_generator()
+                loss = {**loss, **g_loss}
 
             # =================================================================================== #
             #                                 4. Miscellaneous                                    #
@@ -142,35 +100,16 @@ class ZTrainer:
 
             # Print out training information.
             if (i + 1) % self.solver.log_step == 0:
-                et = time.time() - start_time
-                et = str(datetime.timedelta(seconds=et))[:-7]
-                log = "Elapsed [{}], Iteration [{}/{}]".format(et, i + 1, self.solver.num_iters)
-                for tag, value in loss.items():
-                    log += ", {}: {:.4f}".format(tag, value)
-                print(log)
-
-                if self.solver.use_tensorboard:
-                    for tag, value in loss.items():
-                        self.solver.logger.scalar_summary(tag, value, i + 1)
+                self.print_train_info(i, loss, start_time)
 
             # Translate fixed images for debugging.
             if (i + 1) % self.solver.sample_step == 0:
                 with torch.no_grad():
-                    x_fake_list = [self.x_fixed]
-                    for c_fixed in c_fixed_list:
-                        x_fake_list.append(self.solver.G(self.x_fixed, c_fixed))
-                    x_concat = torch.cat(x_fake_list, dim=3)
-                    sample_path = os.path.join(self.solver.sample_dir, '{}-images.jpg'.format(i + 1))
-                    save_image(self.solver.denorm(x_concat.data.cpu()), sample_path, nrow=1, padding=0)
-                    print('Saved real and fake images into {}...'.format(sample_path))
+                    self.save_fixed_images(c_fixed_list, i)
 
             # Save model checkpoints.
             if (i + 1) % self.solver.model_save_step == 0:
-                g_path = os.path.join(self.solver.model_save_dir, '{}-G.ckpt'.format(i + 1))
-                d_path = os.path.join(self.solver.model_save_dir, '{}-D.ckpt'.format(i + 1))
-                torch.save(self.solver.G.state_dict(), g_path)
-                torch.save(self.solver.D.state_dict(), d_path)
-                print('Saved model checkpoints into {}...'.format(self.solver.model_save_dir))
+                self.save_checkpoint(i)
 
             # Decay learning rates.
             if (i + 1) % self.solver.lr_update_step == 0 and (i + 1) > (
@@ -179,3 +118,73 @@ class ZTrainer:
                 d_lr -= (self.solver.d_lr / float(self.solver.num_iters_decay))
                 self.solver.update_lr(g_lr, d_lr)
                 print('Decayed learning rates, g_lr: {}, d_lr: {}.'.format(g_lr, d_lr))
+
+    def save_checkpoint(self, i):
+        g_path = os.path.join(self.solver.model_save_dir, '{}-G.ckpt'.format(i + 1))
+        d_path = os.path.join(self.solver.model_save_dir, '{}-D.ckpt'.format(i + 1))
+        torch.save(self.solver.G.state_dict(), g_path)
+        torch.save(self.solver.D.state_dict(), d_path)
+        print('Saved model checkpoints into {}...'.format(self.solver.model_save_dir))
+
+    def save_fixed_images(self, c_fixed_list, i):
+        x_fake_list = [self.x_fixed]
+        for c_fixed in c_fixed_list:
+            x_fake_list.append(self.solver.G(self.x_fixed, c_fixed))
+        x_concat = torch.cat(x_fake_list, dim=3)
+        sample_path = os.path.join(self.solver.sample_dir, '{}-images.jpg'.format(i + 1))
+        save_image(self.solver.denorm(x_concat.data.cpu()), sample_path, nrow=1, padding=0)
+        print('Saved real and fake images into {}...'.format(sample_path))
+
+    def print_train_info(self, i, loss, start_time):
+        et = time.time() - start_time
+        et = str(datetime.timedelta(seconds=et))[:-7]
+        log = "Elapsed [{}], Iteration [{}/{}]".format(et, i + 1, self.solver.num_iters)
+        for tag, value in loss.items():
+            log += ", {}: {:.4f}".format(tag, value)
+        print(log)
+        if self.solver.use_tensorboard:
+            for tag, value in loss.items():
+                self.solver.logger.scalar_summary(tag, value, i + 1)
+
+    def train_generator(self):
+        # Original-to-target domain.
+        x_fake = self.solver.G(self.x_real, self.c_trg)
+        out_src, out_cls = self.solver.D(x_fake)
+        g_loss_fake = - torch.mean(out_src)
+        g_loss_cls = self.solver.classification_loss(out_cls, self.label_trg)
+        # Target-to-original domain.
+        x_reconst = self.solver.G(x_fake, self.c_org)
+        g_loss_rec = torch.mean(torch.abs(self.x_real - x_reconst))
+        # Backward and optimize.
+        g_loss = g_loss_fake + self.solver.lambda_rec * g_loss_rec + self.solver.lambda_cls * g_loss_cls
+        self.solver.reset_grad()
+        g_loss.backward()
+        self.solver.g_optimizer.step()
+        # Logging.
+        g_loss = {'G/loss_fake': g_loss_fake.item(), 'G/loss_rec': g_loss_rec.item(),
+                  'G/loss_cls': g_loss_cls.item()}
+        return g_loss
+
+    def train_discriminator(self):
+        # Compute loss with real images.
+        out_src, out_cls = self.solver.D(self.x_real)
+        d_loss_real = - torch.mean(out_src)
+        d_loss_cls = self.solver.classification_loss(out_cls, self.label_org)
+        # Compute loss with fake images.
+        x_fake = self.solver.G(self.x_real, self.c_trg)
+        out_src, out_cls = self.solver.D(x_fake.detach())
+        d_loss_fake = torch.mean(out_src)
+        # Compute loss for gradient penalty.
+        self.alpha = torch.rand(self.x_real.size(0), 1, 1, 1)
+        x_hat = (self.alpha * self.x_real.data + (1 - self.alpha) * x_fake.data).requires_grad_(True)
+        out_src, _ = self.solver.D(x_hat)
+        d_loss_gp = self.solver.gradient_penalty(out_src, x_hat)
+        # Backward and optimize.
+        d_loss = d_loss_real + d_loss_fake + self.solver.lambda_cls * d_loss_cls + self.solver.lambda_gp * d_loss_gp
+        self.solver.reset_grad()
+        d_loss.backward()
+        self.solver.d_optimizer.step()
+        # Logging.
+        loss = {'D/loss_real': d_loss_real.item(), 'D/loss_fake': d_loss_fake.item(),
+                'D/loss_cls': d_loss_cls.item(), 'D/loss_gp': d_loss_gp.item()}
+        return loss
