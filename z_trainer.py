@@ -34,6 +34,8 @@ class ZTrainer:
     c_org = data_on_device()
     c_trg = data_on_device()
     alpha = data_on_device()
+    label_org = data_on_device()  # Labels for computing classification loss.
+    label_trg = data_on_device()  # Labels for computing classification loss.
 
     def train(self):
         """Train StarGAN within a single dataset."""
@@ -66,20 +68,17 @@ class ZTrainer:
 
             # Fetch real images and labels.
             try:
-                self.x_real, label_org = next(data_iter)
+                self.x_real, self.label_org = next(data_iter)
             except:
                 data_iter = iter(data_loader)
-                self.x_real, label_org = next(data_iter)
+                self.x_real, self.label_org = next(data_iter)
 
             # Generate target domain labels randomly.
-            rand_idx = torch.randperm(label_org.size(0))
-            label_trg = label_org[rand_idx]
+            rand_idx = torch.randperm(self.label_org.size(0))
+            self.label_trg = self.label_org[rand_idx]
 
-            self.c_org = label_org.clone() # Original domain labels.
-            self.c_trg = label_trg.clone() # Target domain labels.
-
-            label_org = label_org.to(self.solver.device)  # Labels for computing classification loss.
-            label_trg = label_trg.to(self.solver.device)  # Labels for computing classification loss.
+            self.c_org = self.label_org.clone()  # Original domain labels.
+            self.c_trg = self.label_trg.clone() # Target domain labels.
 
             # =================================================================================== #
             #                             2. Train the discriminator                              #
@@ -88,7 +87,7 @@ class ZTrainer:
             # Compute loss with real images.
             out_src, out_cls = self.solver.D(self.x_real)
             d_loss_real = - torch.mean(out_src)
-            d_loss_cls = self.solver.classification_loss(out_cls, label_org)
+            d_loss_cls = self.solver.classification_loss(out_cls, self.label_org)
 
             # Compute loss with fake images.
             x_fake = self.solver.G(self.x_real, self.c_trg)
@@ -123,7 +122,7 @@ class ZTrainer:
                 x_fake = self.solver.G(self.x_real, self.c_trg)
                 out_src, out_cls = self.solver.D(x_fake)
                 g_loss_fake = - torch.mean(out_src)
-                g_loss_cls = self.solver.classification_loss(out_cls, label_trg)
+                g_loss_cls = self.solver.classification_loss(out_cls, self.label_trg)
 
                 # Target-to-original domain.
                 x_reconst = self.solver.G(x_fake, self.c_org)
