@@ -5,10 +5,33 @@ import os
 
 from torchvision.utils import save_image
 
+device = None
+
+
+class data_on_device(property):
+
+    def __init__(self, d):
+        super().__init__(self.__get_x, self.__set_x)
+        self.device = d
+        self._x = None
+
+    def __get_x(self, _owner):
+        return self._x
+
+    def __set_x(self, _owner, v):
+        if self.device is not None:
+            self._x = v.to(self.device)
+        else:
+            self._x = v
+
 
 class ZTrainer:
+
     def __init__(self, solver):
         self.solver = solver
+
+    # data to be stored on gpu
+    x_fixed = data_on_device(device)
 
     def train(self):
         """Train StarGAN within a single dataset."""
@@ -17,8 +40,7 @@ class ZTrainer:
 
         # Fetch fixed inputs for debugging.
         data_iter = iter(data_loader)
-        x_fixed, c_org = next(data_iter)
-        x_fixed = x_fixed.to(self.solver.device)
+        self.x_fixed, c_org = next(data_iter)
         c_fixed_list = self.solver.create_labels(c_org, self.solver.c_dim, self.solver.selected_attrs)
 
         # Learning rate cache for decaying.
@@ -139,9 +161,9 @@ class ZTrainer:
             # Translate fixed images for debugging.
             if (i + 1) % self.solver.sample_step == 0:
                 with torch.no_grad():
-                    x_fake_list = [x_fixed]
+                    x_fake_list = [self.x_fixed]
                     for c_fixed in c_fixed_list:
-                        x_fake_list.append(self.solver.G(x_fixed, c_fixed))
+                        x_fake_list.append(self.solver.G(self.x_fixed, c_fixed))
                     x_concat = torch.cat(x_fake_list, dim=3)
                     sample_path = os.path.join(self.solver.sample_dir, '{}-images.jpg'.format(i + 1))
                     save_image(self.solver.denorm(x_concat.data.cpu()), sample_path, nrow=1, padding=0)

@@ -126,8 +126,10 @@ class ZSolver(GenericSolver):
         return F.binary_cross_entropy_with_logits(logit, target, size_average=False) / logit.size(0)
 
     def train(self):
-        z_trainer = ZTrainer(self)
-        z_trainer.train()
+        import z_trainer
+        z_trainer.device = self.device
+        tr = ZTrainer(self)
+        tr.train()
 
     def test(self):
         """Translate images using StarGAN trained on a single dataset."""
