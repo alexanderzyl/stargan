@@ -30,6 +30,10 @@ class ZTrainer:
 
     # data to be stored on gpu
     x_fixed = data_on_device()
+    x_real = data_on_device()
+    c_org = data_on_device()
+    c_trg = data_on_device()
+    alpha = data_on_device()
 
     def train(self):
         """Train StarGAN within a single dataset."""
@@ -62,21 +66,18 @@ class ZTrainer:
 
             # Fetch real images and labels.
             try:
-                x_real, label_org = next(data_iter)
+                self.x_real, label_org = next(data_iter)
             except:
                 data_iter = iter(data_loader)
-                x_real, label_org = next(data_iter)
+                self.x_real, label_org = next(data_iter)
 
             # Generate target domain labels randomly.
             rand_idx = torch.randperm(label_org.size(0))
             label_trg = label_org[rand_idx]
 
-            c_org = label_org.clone()
-            c_trg = label_trg.clone()
+            self.c_org = label_org.clone() # Original domain labels.
+            self.c_trg = label_trg.clone() # Target domain labels.
 
-            x_real = x_real.to(self.solver.device)  # Input images.
-            c_org = c_org.to(self.solver.device)  # Original domain labels.
-            c_trg = c_trg.to(self.solver.device)  # Target domain labels.
             label_org = label_org.to(self.solver.device)  # Labels for computing classification loss.
             label_trg = label_trg.to(self.solver.device)  # Labels for computing classification loss.
 
@@ -85,18 +86,18 @@ class ZTrainer:
             # =================================================================================== #
 
             # Compute loss with real images.
-            out_src, out_cls = self.solver.D(x_real)
+            out_src, out_cls = self.solver.D(self.x_real)
             d_loss_real = - torch.mean(out_src)
             d_loss_cls = self.solver.classification_loss(out_cls, label_org)
 
             # Compute loss with fake images.
-            x_fake = self.solver.G(x_real, c_trg)
+            x_fake = self.solver.G(self.x_real, self.c_trg)
             out_src, out_cls = self.solver.D(x_fake.detach())
             d_loss_fake = torch.mean(out_src)
 
             # Compute loss for gradient penalty.
-            alpha = torch.rand(x_real.size(0), 1, 1, 1).to(self.solver.device)
-            x_hat = (alpha * x_real.data + (1 - alpha) * x_fake.data).requires_grad_(True)
+            self.alpha = torch.rand(self.x_real.size(0), 1, 1, 1)
+            x_hat = (self.alpha * self.x_real.data + (1 - self.alpha) * x_fake.data).requires_grad_(True)
             out_src, _ = self.solver.D(x_hat)
             d_loss_gp = self.solver.gradient_penalty(out_src, x_hat)
 
@@ -119,14 +120,14 @@ class ZTrainer:
 
             if (i + 1) % self.solver.n_critic == 0:
                 # Original-to-target domain.
-                x_fake = self.solver.G(x_real, c_trg)
+                x_fake = self.solver.G(self.x_real, self.c_trg)
                 out_src, out_cls = self.solver.D(x_fake)
                 g_loss_fake = - torch.mean(out_src)
                 g_loss_cls = self.solver.classification_loss(out_cls, label_trg)
 
                 # Target-to-original domain.
-                x_reconst = self.solver.G(x_fake, c_org)
-                g_loss_rec = torch.mean(torch.abs(x_real - x_reconst))
+                x_reconst = self.solver.G(x_fake, self.c_org)
+                g_loss_rec = torch.mean(torch.abs(self.x_real - x_reconst))
 
                 # Backward and optimize.
                 g_loss = g_loss_fake + self.solver.lambda_rec * g_loss_rec + self.solver.lambda_cls * g_loss_cls
