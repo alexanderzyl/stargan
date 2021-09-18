@@ -126,9 +126,7 @@ class ZSolver(GenericSolver):
         return F.binary_cross_entropy_with_logits(logit, target, size_average=False) / logit.size(0)
 
     def train(self):
-        import z_trainer
-        z_trainer.device = self.device
-        tr = ZTrainer(self)
+        tr = ZTrainer(self, self.device)
         tr.train()
 
     def test(self):
