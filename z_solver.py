@@ -4,7 +4,7 @@ import torch
 import os
 
 from properties import data_on_device
-from z_model import ZGenerator, ZDiscriminator
+from z_model import ZEncoder, ZDecoder, ZDiscriminator
 from z_trainer import ZTrainer
 
 
@@ -65,11 +65,13 @@ class ZSolver(GenericSolver):
         if self.use_tensorboard:
             self.build_tensorboard(self.log_dir)
 
-    G = data_on_device()
+    Encoder = data_on_device()
+    Decoder = data_on_device()
     D = data_on_device()
 
     def iter_models(self):
-        yield self.G
+        yield self.Encoder
+        yield self.Decoder
         yield self.D
 
     def build_model(self):
@@ -78,11 +80,16 @@ class ZSolver(GenericSolver):
         def _create_opt(m, lr):
             return torch.optim.Adam(m.parameters(), lr, (self.beta1, self.beta2))
 
-        self.G = ZGenerator(
-            name='G',
+        self.Encoder = ZEncoder(
+            name='enc',
             conv_dim=self.g_conv_dim,
             c_dim=self.c_dim,
             repeat_num=self.g_repeat_num,
+            create_optimizer=lambda m: _create_opt(m, self.g_lr))
+
+        self.Decoder = ZDecoder(
+            name='dec',
+            conv_dim=self.Encoder.out_dim,
             create_optimizer=lambda m: _create_opt(m, self.g_lr))
 
         self.D = ZDiscriminator(
@@ -139,7 +146,8 @@ class ZSolver(GenericSolver):
                 # Translate images.
                 x_fake_list = [x_real]
                 for c_trg in c_trg_list:
-                    x_fake_list.append(self.G(x_real, c_trg))
+                    z_vector = self.Decoder(x_real, c_trg)
+                    x_fake_list.append(self.Encoder(z_vector))
 
                 # Save the translated images.
                 x_concat = torch.cat(x_fake_list, dim=3)

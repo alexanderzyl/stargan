@@ -35,11 +35,11 @@ class ZModel(nn.Module):
         print("The number of parameters: {}".format(num_params))
 
 
-class ZGenerator(ZModel):
+class ZEncoder(ZModel):
     """Generator network."""
 
     def __init__(self, name, conv_dim=64, c_dim=5, repeat_num=6, create_optimizer=None):
-        super(ZGenerator, self).__init__(name)
+        super(ZEncoder, self).__init__(name)
 
         layers = [nn.Conv2d(3 + c_dim, conv_dim, kernel_size=7, stride=1, padding=3, bias=False),
                   nn.InstanceNorm2d(conv_dim, affine=True, track_running_stats=True), nn.ReLU(inplace=True)]
@@ -56,6 +56,31 @@ class ZGenerator(ZModel):
         for i in range(repeat_num):
             layers.append(ResidualBlock(dim_in=curr_dim, dim_out=curr_dim))
 
+        self.out_dim = curr_dim
+
+        self.main = nn.Sequential(*layers)
+        if create_optimizer is not None:
+            self.optimizer = create_optimizer(self)
+
+    def forward(self, x, c):
+        # Replicate spatially and concatenate domain information.
+        # Note that this type of label conditioning does not work at all if we use reflection padding in Conv2d.
+        # This is because instance normalization ignores the shifting (or bias) effect.
+        c = c.view(c.size(0), c.size(1), 1, 1)
+        c = c.repeat(1, 1, x.size(2), x.size(3))
+        x = torch.cat([x, c], dim=1)
+        return self.main(x)
+
+
+class ZDecoder(ZModel):
+    """Generator network."""
+
+    def __init__(self, name, conv_dim, create_optimizer=None):
+        super(ZDecoder, self).__init__(name)
+
+        layers = []
+        curr_dim = conv_dim
+
         # Up-sampling layers.
         for i in range(2):
             layers.append(nn.ConvTranspose2d(curr_dim, curr_dim // 2, kernel_size=4, stride=2, padding=1, bias=False))
@@ -69,13 +94,7 @@ class ZGenerator(ZModel):
         if create_optimizer is not None:
             self.optimizer = create_optimizer(self)
 
-    def forward(self, x, c):
-        # Replicate spatially and concatenate domain information.
-        # Note that this type of label conditioning does not work at all if we use reflection padding in Conv2d.
-        # This is because instance normalization ignores the shifting (or bias) effect.
-        c = c.view(c.size(0), c.size(1), 1, 1)
-        c = c.repeat(1, 1, x.size(2), x.size(3))
-        x = torch.cat([x, c], dim=1)
+    def forward(self, x):
         return self.main(x)
 
 
