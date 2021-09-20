@@ -99,8 +99,8 @@ class ZSolver(GenericSolver):
     def restore_model(self, resume_iters):
         """Restore the trained generator and discriminator."""
         print('Loading the trained models from step {}...'.format(resume_iters))
-        for model, ext in zip(iter(self.iter_models()), ('{}-G.ckpt', '{}-D.ckpt')):
-            path = os.path.join(self.model_save_dir, ext.format(resume_iters))
+        for model in self.iter_models():
+            path = os.path.join(self.model_save_dir, '{}-{}.ckpt'.format(resume_iters, model.name))
             model.load_state_dict(torch.load(path, map_location=lambda storage, loc: storage))
 
     def get_lrs(self):
