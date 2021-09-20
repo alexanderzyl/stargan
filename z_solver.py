@@ -112,8 +112,8 @@ class ZSolver(GenericSolver):
 
     def reset_grad(self):
         """Reset the gradient buffers."""
-        self.G.optimizer.zero_grad()
-        self.D.optimizer.zero_grad()
+        for m in self.iter_models():
+            m.optimizer.zero_grad()
 
     def gradient_penalty(self, y, x):
         """Compute gradient penalty: (L2_norm(dy/dx) - 1)**2."""
