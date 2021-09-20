@@ -70,14 +70,14 @@ class ZSolver(GenericSolver):
         """Create a generator and a discriminator."""
 
         def _create_opt(model, lr):
-            torch.optim.Adam(model.parameters(), lr, (self.beta1, self.beta2))
-
+            return torch.optim.Adam(model.parameters(), lr, (self.beta1, self.beta2))
 
         self.G = ZGenerator(
             conv_dim=self.g_conv_dim,
-            c_dim= self.c_dim,
+            c_dim=self.c_dim,
             repeat_num=self.g_repeat_num,
             create_optimizer=lambda model: _create_opt(model, self.g_lr))
+
         self.D = ZDiscriminator(
             image_size=self.image_size,
             conv_dim=self.d_conv_dim,
@@ -121,9 +121,9 @@ class ZSolver(GenericSolver):
                                    create_graph=True,
                                    only_inputs=True)[0]
 
-        dydx = dydx.view(dydx.size(0), -1) # noqa
-        dydx_l2norm = torch.sqrt(torch.sum(dydx**2, dim=1))
-        return torch.mean((dydx_l2norm-1)**2)
+        dydx = dydx.view(dydx.size(0), -1)  # noqa
+        dydx_l2norm = torch.sqrt(torch.sum(dydx ** 2, dim=1))
+        return torch.mean((dydx_l2norm - 1) ** 2)
 
     def label2onehot(self, labels, dim):
         """Convert label indices to one-hot vectors."""
@@ -144,10 +144,10 @@ class ZSolver(GenericSolver):
         """Translate images using StarGAN trained on a single dataset."""
         # Load the trained generator.
         self.restore_model(self.test_iters)
-        
+
         # Set data loader.
         data_loader = self.loader
-        
+
         with torch.no_grad():
             for i, (x_real, c_org) in enumerate(data_loader):
 
@@ -162,6 +162,6 @@ class ZSolver(GenericSolver):
 
                 # Save the translated images.
                 x_concat = torch.cat(x_fake_list, dim=3)
-                result_path = os.path.join(self.result_dir, '{}-images.jpg'.format(i+1))
+                result_path = os.path.join(self.result_dir, '{}-images.jpg'.format(i + 1))
                 save_image(self.denorm(x_concat.data.cpu()), result_path, nrow=1, padding=0)
                 print('Saved real and fake images into {}...'.format(result_path))
