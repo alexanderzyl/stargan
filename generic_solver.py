@@ -7,15 +7,6 @@ class GenericSolver(object, metaclass=ABCMeta):
     def __init__(self):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    def print_network(self, model, name):
-        """Print out the network information."""
-        num_params = 0
-        for p in model.parameters():
-            num_params += p.numel()
-        print(model)
-        print(name)
-        print("The number of parameters: {}".format(num_params))
-
     @abstractmethod
     def train(self):
         """Train StarGAN within a single dataset."""

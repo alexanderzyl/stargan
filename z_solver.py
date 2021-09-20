@@ -89,8 +89,8 @@ class ZSolver(GenericSolver):
             repeat_num=self.d_repeat_num,
             create_optimizer=lambda model: _create_opt(model, self.d_lr))
 
-        self.print_network(self.G, 'G')
-        self.print_network(self.D, 'D')
+        self.G.print_network('G')
+        self.D.print_network('D')
 
     def restore_model(self, resume_iters):
         """Restore the trained generator and discriminator."""

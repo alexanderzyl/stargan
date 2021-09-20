@@ -24,6 +24,15 @@ class ZModel(nn.Module):
         super().__init__()
         self.optimizer = None
 
+    def print_network(self, name):
+        """Print out the network information."""
+        num_params = 0
+        for p in self.parameters():
+            num_params += p.numel()
+        print(self)
+        print(name)
+        print("The number of parameters: {}".format(num_params))
+
 
 class ZGenerator(ZModel):
     """Generator network."""
