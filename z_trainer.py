@@ -159,7 +159,7 @@ class ZTrainer:
         g_loss = g_loss_fake + self.solver.lambda_rec * g_loss_rec + self.solver.lambda_cls * g_loss_cls
         self.solver.reset_grad()
         g_loss.backward()
-        self.solver.g_optimizer.step()
+        self.solver.G.optimizer.step()
         # Logging.
         g_loss = {'G/loss_fake': g_loss_fake.item(), 'G/loss_rec': g_loss_rec.item(),
                   'G/loss_cls': g_loss_cls.item()}
@@ -183,7 +183,7 @@ class ZTrainer:
         d_loss = d_loss_real + d_loss_fake + self.solver.lambda_cls * d_loss_cls + self.solver.lambda_gp * d_loss_gp
         self.solver.reset_grad()
         d_loss.backward()
-        self.solver.d_optimizer.step()
+        self.solver.D.optimizer.step()
         # Logging.
         loss = {'D/loss_real': d_loss_real.item(), 'D/loss_fake': d_loss_fake.item(),
                 'D/loss_cls': d_loss_cls.item(), 'D/loss_gp': d_loss_gp.item()}

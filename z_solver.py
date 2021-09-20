@@ -68,14 +68,26 @@ class ZSolver(GenericSolver):
 
     def build_model(self):
         """Create a generator and a discriminator."""
-        self.G = ZGenerator(self.g_conv_dim, self.c_dim, self.g_repeat_num)
-        self.D = ZDiscriminator(self.image_size, self.d_conv_dim, self.c_dim, self.d_repeat_num)
 
-        self.g_optimizer = torch.optim.Adam(self.G.parameters(), self.g_lr, (self.beta1, self.beta2))
-        self.d_optimizer = torch.optim.Adam(self.D.parameters(), self.d_lr, (self.beta1, self.beta2))
+        def _create_opt(model, lr):
+            torch.optim.Adam(model.parameters(), lr, (self.beta1, self.beta2))
+
+
+        self.G = ZGenerator(
+            conv_dim=self.g_conv_dim,
+            c_dim= self.c_dim,
+            repeat_num=self.g_repeat_num,
+            create_optimizer=lambda model: _create_opt(model, self.g_lr))
+        self.D = ZDiscriminator(
+            image_size=self.image_size,
+            conv_dim=self.d_conv_dim,
+            c_dim=self.c_dim,
+            repeat_num=self.d_repeat_num,
+            create_optimizer=lambda model: _create_opt(model, self.d_lr))
+
         self.print_network(self.G, 'G')
         self.print_network(self.D, 'D')
-            
+
         self.G.to(self.device)
         self.D.to(self.device)
 
@@ -89,15 +101,15 @@ class ZSolver(GenericSolver):
 
     def update_lr(self, g_lr, d_lr):
         """Decay learning rates of the generator and discriminator."""
-        for param_group in self.g_optimizer.param_groups:
+        for param_group in self.G.optimizer.param_groups:
             param_group['lr'] = g_lr
-        for param_group in self.d_optimizer.param_groups:
+        for param_group in self.D.optimizer.param_groups:
             param_group['lr'] = d_lr
 
     def reset_grad(self):
         """Reset the gradient buffers."""
-        self.g_optimizer.zero_grad()
-        self.d_optimizer.zero_grad()
+        self.G.optimizer.zero_grad()
+        self.D.optimizer.zero_grad()
 
     def gradient_penalty(self, y, x):
         """Compute gradient penalty: (L2_norm(dy/dx) - 1)**2."""
