@@ -99,10 +99,9 @@ class ZSolver(GenericSolver):
     def restore_model(self, resume_iters):
         """Restore the trained generator and discriminator."""
         print('Loading the trained models from step {}...'.format(resume_iters))
-        G_path = os.path.join(self.model_save_dir, '{}-G.ckpt'.format(resume_iters))
-        D_path = os.path.join(self.model_save_dir, '{}-D.ckpt'.format(resume_iters))
-        self.G.load_state_dict(torch.load(G_path, map_location=lambda storage, loc: storage))
-        self.D.load_state_dict(torch.load(D_path, map_location=lambda storage, loc: storage))
+        for model, ext in zip(iter(self.iter_models()), ('{}-G.ckpt', '{}-D.ckpt')):
+            path = os.path.join(self.model_save_dir, ext.format(resume_iters))
+            model.load_state_dict(torch.load(path, map_location=lambda storage, loc: storage))
 
     def update_lr(self, g_lr, d_lr):
         """Decay learning rates of the generator and discriminator."""
