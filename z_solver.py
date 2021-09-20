@@ -79,20 +79,22 @@ class ZSolver(GenericSolver):
             return torch.optim.Adam(m.parameters(), lr, (self.beta1, self.beta2))
 
         self.G = ZGenerator(
+            name='G',
             conv_dim=self.g_conv_dim,
             c_dim=self.c_dim,
             repeat_num=self.g_repeat_num,
             create_optimizer=lambda m: _create_opt(m, self.g_lr))
 
         self.D = ZDiscriminator(
+            name='D',
             image_size=self.image_size,
             conv_dim=self.d_conv_dim,
             c_dim=self.c_dim,
             repeat_num=self.d_repeat_num,
             create_optimizer=lambda m: _create_opt(m, self.d_lr))
 
-        for name, model in zip(('G', 'D'), iter(self.iter_models())):
-            model.print_network(name)
+        for model in self.iter_models():
+            model.print_network()
 
     def restore_model(self, resume_iters):
         """Restore the trained generator and discriminator."""
