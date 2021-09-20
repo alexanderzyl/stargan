@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 import os
 
+from properties import data_on_device
 from z_model import ZGenerator, ZDiscriminator
 from z_trainer import ZTrainer
 
@@ -66,6 +67,9 @@ class ZSolver(GenericSolver):
         if self.use_tensorboard:
             self.build_tensorboard(self.log_dir)
 
+    G = data_on_device()
+    D = data_on_device()
+
     def build_model(self):
         """Create a generator and a discriminator."""
 
@@ -84,9 +88,6 @@ class ZSolver(GenericSolver):
             c_dim=self.c_dim,
             repeat_num=self.d_repeat_num,
             create_optimizer=lambda model: _create_opt(model, self.d_lr))
-
-        self.G.to(self.device)
-        self.D.to(self.device)
 
         self.print_network(self.G, 'G')
         self.print_network(self.D, 'D')
