@@ -93,7 +93,7 @@ class ZSolver(GenericSolver):
             repeat_num=self.d_repeat_num,
             create_optimizer=lambda model: _create_opt(model, self.d_lr))
 
-        for name, model in ('G', 'D'), iter(self.iter_models()):
+        for name, model in zip(('G', 'D'), iter(self.iter_models())):
             model.print_network(name)
 
     def restore_model(self, resume_iters):
