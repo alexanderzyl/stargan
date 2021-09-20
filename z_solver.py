@@ -1,12 +1,11 @@
 from generic_solver import GenericSolver
-from model import Generator
-from model import Discriminator
 from torchvision.utils import save_image
 import torch
 import torch.nn.functional as F
 import numpy as np
 import os
 
+from z_model import ZGenerator, ZDiscriminator
 from z_trainer import ZTrainer
 
 
@@ -69,8 +68,8 @@ class ZSolver(GenericSolver):
 
     def build_model(self):
         """Create a generator and a discriminator."""
-        self.G = Generator(self.g_conv_dim, self.c_dim, self.g_repeat_num)
-        self.D = Discriminator(self.image_size, self.d_conv_dim, self.c_dim, self.d_repeat_num)
+        self.G = ZGenerator(self.g_conv_dim, self.c_dim, self.g_repeat_num)
+        self.D = ZDiscriminator(self.image_size, self.d_conv_dim, self.c_dim, self.d_repeat_num)
 
         self.g_optimizer = torch.optim.Adam(self.G.parameters(), self.g_lr, [self.beta1, self.beta2])
         self.d_optimizer = torch.optim.Adam(self.D.parameters(), self.d_lr, [self.beta1, self.beta2])
