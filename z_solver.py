@@ -70,6 +70,10 @@ class ZSolver(GenericSolver):
     G = data_on_device()
     D = data_on_device()
 
+    def iter_models(self):
+        yield self.G
+        yield self.D
+
     def build_model(self):
         """Create a generator and a discriminator."""
 
@@ -89,8 +93,8 @@ class ZSolver(GenericSolver):
             repeat_num=self.d_repeat_num,
             create_optimizer=lambda model: _create_opt(model, self.d_lr))
 
-        self.G.print_network('G')
-        self.D.print_network('D')
+        for name, model in ('G', 'D'), iter(self.iter_models()):
+            model.print_network(name)
 
     def restore_model(self, resume_iters):
         """Restore the trained generator and discriminator."""
