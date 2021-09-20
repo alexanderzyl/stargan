@@ -5,6 +5,7 @@ import numpy as np
 
 class ResidualBlock(nn.Module):
     """Residual Block with instance normalization."""
+
     def __init__(self, dim_in, dim_out):
         super(ResidualBlock, self).__init__()
         self.main = nn.Sequential(
@@ -18,8 +19,14 @@ class ResidualBlock(nn.Module):
         return x + self.main(x)
 
 
-class ZGenerator(nn.Module):
+class ZModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class ZGenerator(ZModel):
     """Generator network."""
+
     def __init__(self, conv_dim=64, c_dim=5, repeat_num=6):
         super(ZGenerator, self).__init__()
 
@@ -29,8 +36,8 @@ class ZGenerator(nn.Module):
         # Down-sampling layers.
         curr_dim = conv_dim
         for i in range(2):
-            layers.append(nn.Conv2d(curr_dim, curr_dim*2, kernel_size=4, stride=2, padding=1, bias=False))
-            layers.append(nn.InstanceNorm2d(curr_dim*2, affine=True, track_running_stats=True))
+            layers.append(nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1, bias=False))
+            layers.append(nn.InstanceNorm2d(curr_dim * 2, affine=True, track_running_stats=True))
             layers.append(nn.ReLU(inplace=True))
             curr_dim = curr_dim * 2
 
@@ -40,8 +47,8 @@ class ZGenerator(nn.Module):
 
         # Up-sampling layers.
         for i in range(2):
-            layers.append(nn.ConvTranspose2d(curr_dim, curr_dim//2, kernel_size=4, stride=2, padding=1, bias=False))
-            layers.append(nn.InstanceNorm2d(curr_dim//2, affine=True, track_running_stats=True))
+            layers.append(nn.ConvTranspose2d(curr_dim, curr_dim // 2, kernel_size=4, stride=2, padding=1, bias=False))
+            layers.append(nn.InstanceNorm2d(curr_dim // 2, affine=True, track_running_stats=True))
             layers.append(nn.ReLU(inplace=True))
             curr_dim = curr_dim // 2
 
@@ -59,15 +66,16 @@ class ZGenerator(nn.Module):
         return self.main(x)
 
 
-class ZDiscriminator(nn.Module):
+class ZDiscriminator(ZModel):
     """Discriminator network with PatchGAN."""
+
     def __init__(self, image_size=128, conv_dim=64, c_dim=5, repeat_num=6):
         super(ZDiscriminator, self).__init__()
         layers = [nn.Conv2d(3, conv_dim, kernel_size=4, stride=2, padding=1), nn.LeakyReLU(0.01)]
 
         curr_dim = conv_dim
         for i in range(1, repeat_num):
-            layers.append(nn.Conv2d(curr_dim, curr_dim*2, kernel_size=4, stride=2, padding=1))
+            layers.append(nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1))
             layers.append(nn.LeakyReLU(0.01))
             curr_dim = curr_dim * 2
 
