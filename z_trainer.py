@@ -54,8 +54,8 @@ class ZTrainer:
         c_fixed_list = self.solver.create_labels(c_org, self.solver.c_dim, self.solver.selected_attrs)
 
         # Learning rate cache for decaying.
-        g_lr = self.solver.g_lr
-        d_lr = self.solver.d_lr
+        lrs = self.solver.get_lrs()
+        delta_lrs = [lr / float(self.solver.num_iters_decay) for lr in self.solver.get_lrs()]
 
         # Start training from scratch or resume training.
         start_iters = 0
@@ -120,10 +120,11 @@ class ZTrainer:
             # Decay learning rates.
             if (i + 1) % self.solver.lr_update_step == 0 and (i + 1) > (
                     self.solver.num_iters - self.solver.num_iters_decay):
-                g_lr -= (self.solver.g_lr / float(self.solver.num_iters_decay))
-                d_lr -= (self.solver.d_lr / float(self.solver.num_iters_decay))
-                self.solver.update_lr(g_lr, d_lr)
-                print('Decayed learning rates, g_lr: {}, d_lr: {}.'.format(g_lr, d_lr))
+                lrs = [lr-d for lr, d in zip(lrs, delta_lrs)]
+                self.solver.update_lrs(lrs)
+                print('Decayed learning rates:')
+                for lr, model in zip(lrs, self.solver.iter_models()):
+                    print("Model: {}, lr = {}".format(model.name, lr))
 
     def save_checkpoint(self, i):
         g_path = os.path.join(self.solver.model_save_dir, '{}-G.ckpt'.format(i + 1))

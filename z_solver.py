@@ -103,12 +103,14 @@ class ZSolver(GenericSolver):
             path = os.path.join(self.model_save_dir, ext.format(resume_iters))
             model.load_state_dict(torch.load(path, map_location=lambda storage, loc: storage))
 
-    def update_lr(self, g_lr, d_lr):
+    def get_lrs(self):
+        return [m.optimizer.param_groups[0]['lr'] for m in self.iter_models()]
+
+    def update_lrs(self, lrs):
         """Decay learning rates of the generator and discriminator."""
-        for param_group in self.G.optimizer.param_groups:
-            param_group['lr'] = g_lr
-        for param_group in self.D.optimizer.param_groups:
-            param_group['lr'] = d_lr
+        for lr, model in zip(lrs, self.iter_models()):
+            for param_group in model.optimizer.param_groups:
+                param_group['lr'] = lr
 
     def reset_grad(self):
         """Reset the gradient buffers."""
