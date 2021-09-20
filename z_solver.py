@@ -1,8 +1,6 @@
 from generic_solver import GenericSolver
 from torchvision.utils import save_image
 import torch
-import torch.nn.functional as F
-import numpy as np
 import os
 
 from properties import data_on_device
@@ -77,21 +75,21 @@ class ZSolver(GenericSolver):
     def build_model(self):
         """Create a generator and a discriminator."""
 
-        def _create_opt(model, lr):
-            return torch.optim.Adam(model.parameters(), lr, (self.beta1, self.beta2))
+        def _create_opt(m, lr):
+            return torch.optim.Adam(m.parameters(), lr, (self.beta1, self.beta2))
 
         self.G = ZGenerator(
             conv_dim=self.g_conv_dim,
             c_dim=self.c_dim,
             repeat_num=self.g_repeat_num,
-            create_optimizer=lambda model: _create_opt(model, self.g_lr))
+            create_optimizer=lambda m: _create_opt(m, self.g_lr))
 
         self.D = ZDiscriminator(
             image_size=self.image_size,
             conv_dim=self.d_conv_dim,
             c_dim=self.c_dim,
             repeat_num=self.d_repeat_num,
-            create_optimizer=lambda model: _create_opt(model, self.d_lr))
+            create_optimizer=lambda m: _create_opt(m, self.d_lr))
 
         for name, model in zip(('G', 'D'), iter(self.iter_models())):
             model.print_network(name)
@@ -114,31 +112,6 @@ class ZSolver(GenericSolver):
         """Reset the gradient buffers."""
         for m in self.iter_models():
             m.optimizer.zero_grad()
-
-    def gradient_penalty(self, y, x):
-        """Compute gradient penalty: (L2_norm(dy/dx) - 1)**2."""
-        weight = torch.ones(y.size()).to(self.device)
-        dydx = torch.autograd.grad(outputs=y,
-                                   inputs=x,
-                                   grad_outputs=weight,
-                                   retain_graph=True,
-                                   create_graph=True,
-                                   only_inputs=True)[0]
-
-        dydx = dydx.view(dydx.size(0), -1)  # noqa
-        dydx_l2norm = torch.sqrt(torch.sum(dydx ** 2, dim=1))
-        return torch.mean((dydx_l2norm - 1) ** 2)
-
-    def label2onehot(self, labels, dim):
-        """Convert label indices to one-hot vectors."""
-        batch_size = labels.size(0)
-        out = torch.zeros(batch_size, dim)
-        out[np.arange(batch_size), labels.long()] = 1
-        return out
-
-    def classification_loss(self, logit, target):
-        """Compute binary or softmax cross entropy loss."""
-        return F.binary_cross_entropy_with_logits(logit, target, size_average=False) / logit.size(0)
 
     def train(self):
         tr = ZTrainer(self, self.device)
