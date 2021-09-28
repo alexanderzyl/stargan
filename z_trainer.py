@@ -122,8 +122,12 @@ class ZTrainer:
     def save_checkpoint(self, i):
         g_path = os.path.join(self.solver.model_save_dir, '{}-G.ckpt'.format(i + 1))
         d_path = os.path.join(self.solver.model_save_dir, '{}-D.ckpt'.format(i + 1))
+        gpt_path = os.path.join(self.solver.model_save_dir, '{}-G.pt'.format(i + 1))
+
         torch.save(self.solver.G.state_dict(), g_path)
         torch.save(self.solver.D.state_dict(), d_path)
+        sm = torch.jit.script(self.solver.G)
+        sm.save(gpt_path)
         print('Saved model checkpoints into {}...'.format(self.solver.model_save_dir))
 
     def save_fixed_images(self, c_fixed_list, i):
