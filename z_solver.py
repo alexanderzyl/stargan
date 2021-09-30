@@ -94,10 +94,8 @@ class ZSolver(GenericSolver):
 
         self.D = ZDiscriminator(
             name='D',
-            image_size=self.image_size,
-            conv_dim=self.d_conv_dim,
+            conv_dim=self.Encoder.out_dim,
             c_dim=self.c_dim,
-            repeat_num=self.d_repeat_num,
             create_optimizer=lambda m: _create_opt(m, self.d_lr))
 
         for model in self.iter_models():

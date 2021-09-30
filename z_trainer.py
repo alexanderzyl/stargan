@@ -84,23 +84,21 @@ class ZTrainer:
             self.label_trg = self.label_org[rand_idx]
 
             self.c_org = self.label_org.clone()  # Original domain labels.
-            self.c_trg = self.label_trg.clone() # Target domain labels.
+            self.c_trg = self.label_trg.clone()  # Target domain labels.
 
             # =================================================================================== #
             #                             2. Train the discriminator                              #
             # =================================================================================== #
 
-            # loss = self.train_discriminator()
+            loss = self.train_discriminator()
 
             # =================================================================================== #
             #                               3. Train the generator                                #
             # =================================================================================== #
 
-            # if (i + 1) % self.solver.n_critic == 0:
-            #     g_loss = self.train_generator()
-            #     loss = {**loss, **g_loss}
-
-            loss = self.train_generator()
+            if (i + 1) % self.solver.n_critic == 0:
+                g_loss = self.train_generator()
+                loss = {**loss, **g_loss}
 
             # =================================================================================== #
             #                                 4. Miscellaneous                                    #
@@ -122,7 +120,7 @@ class ZTrainer:
             # Decay learning rates.
             if (i + 1) % self.solver.lr_update_step == 0 and (i + 1) > (
                     self.solver.num_iters - self.solver.num_iters_decay):
-                lrs = [lr-d for lr, d in zip(lrs, delta_lrs)]
+                lrs = [lr - d for lr, d in zip(lrs, delta_lrs)]
                 self.solver.update_lrs(lrs)
                 print('Decayed learning rates:')
                 for lr, model in zip(lrs, self.solver.iter_models()):
@@ -183,45 +181,18 @@ class ZTrainer:
         g_loss = {'G/loss_rec': g_loss_rec.item()}
         return g_loss
 
-    def train_generator_old(self):
-        # Original-to-target domain.
-        x_fake = self.solver.G(self.x_real, self.c_trg)
-        out_src, out_cls = self.solver.D(x_fake)
-        g_loss_fake = - torch.mean(out_src)
-        g_loss_cls = classification_loss(out_cls, self.label_trg)
-        # Target-to-original domain.
-        x_reconst = self.solver.G(x_fake, self.c_org)
-        g_loss_rec = torch.mean(torch.abs(self.x_real - x_reconst))
-        # Backward and optimize.
-        g_loss = g_loss_fake + self.solver.lambda_rec * g_loss_rec + self.solver.lambda_cls * g_loss_cls
-        self.solver.reset_grad()
-        g_loss.backward()
-        self.solver.G.optimizer.step()
-        # Logging.
-        g_loss = {'G/loss_fake': g_loss_fake.item(), 'G/loss_rec': g_loss_rec.item(),
-                  'G/loss_cls': g_loss_cls.item()}
-        return g_loss
-
     def train_discriminator(self):
         # Compute loss with real images.
-        out_src, out_cls = self.solver.D(self.x_real)
-        d_loss_real = - torch.mean(out_src)
+        z_vector = self.solver.Encoder(self.x_real)
+        out_cls = self.solver.D(z_vector)
         d_loss_cls = classification_loss(out_cls, self.label_org)
-        # Compute loss with fake images.
-        x_fake = self.solver.G(self.x_real, self.c_trg)
-        out_src, out_cls = self.solver.D(x_fake.detach())
-        d_loss_fake = torch.mean(out_src)
         # Compute loss for gradient penalty.
         self.alpha = torch.rand(self.x_real.size(0), 1, 1, 1)
-        x_hat = (self.alpha * self.x_real.data + (1 - self.alpha) * x_fake.data).requires_grad_(True)
-        out_src, _ = self.solver.D(x_hat)
-        d_loss_gp = self.gradient_penalty(out_src, x_hat)
         # Backward and optimize.
-        d_loss = d_loss_real + d_loss_fake + self.solver.lambda_cls * d_loss_cls + self.solver.lambda_gp * d_loss_gp
+        d_loss = self.solver.lambda_cls * d_loss_cls
         self.solver.reset_grad()
         d_loss.backward()
         self.solver.D.optimizer.step()
         # Logging.
-        loss = {'D/loss_real': d_loss_real.item(), 'D/loss_fake': d_loss_fake.item(),
-                'D/loss_cls': d_loss_cls.item(), 'D/loss_gp': d_loss_gp.item()}
+        loss = {'D/loss_cls': d_loss_cls.item()}
         return loss
