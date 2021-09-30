@@ -90,15 +90,17 @@ class ZTrainer:
             #                             2. Train the discriminator                              #
             # =================================================================================== #
 
-            loss = self.train_discriminator()
+            # loss = self.train_discriminator()
 
             # =================================================================================== #
             #                               3. Train the generator                                #
             # =================================================================================== #
 
-            if (i + 1) % self.solver.n_critic == 0:
-                g_loss = self.train_generator()
-                loss = {**loss, **g_loss}
+            # if (i + 1) % self.solver.n_critic == 0:
+            #     g_loss = self.train_generator()
+            #     loss = {**loss, **g_loss}
+
+            loss = self.train_generator()
 
             # =================================================================================== #
             #                                 4. Miscellaneous                                    #
