@@ -46,7 +46,7 @@ class ZEncoder(ZModel):
 
         # Down-sampling layers.
         curr_dim = conv_dim
-        for i in range(2):
+        for i in range(5):
             layers.append(nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=1, bias=False))
             layers.append(nn.InstanceNorm2d(curr_dim * 2, affine=True, track_running_stats=True))
             layers.append(nn.ReLU(inplace=True))
@@ -82,7 +82,7 @@ class ZDecoder(ZModel):
         curr_dim = conv_dim
 
         # Up-sampling layers.
-        for i in range(2):
+        for i in range(5):
             layers.append(nn.ConvTranspose2d(curr_dim, curr_dim // 2, kernel_size=4, stride=2, padding=1, bias=False))
             layers.append(nn.InstanceNorm2d(curr_dim // 2, affine=True, track_running_stats=True))
             layers.append(nn.ReLU(inplace=True))
