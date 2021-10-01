@@ -93,5 +93,6 @@ if __name__ == '__main__':
     parser.add_argument('--lr_update_step', type=int, default=1000)
 
     config = parser.parse_args()
+    config.c_dim = len(config.selected_attrs)
     print(config)
     main(config)

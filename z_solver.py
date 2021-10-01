@@ -144,8 +144,8 @@ class ZSolver(GenericSolver):
                 # Translate images.
                 x_fake_list = [x_real]
                 for c_trg in c_trg_list:
-                    z_vector = self.Decoder(x_real, c_trg)
-                    x_fake_list.append(self.Encoder(z_vector))
+                    z_vector = self.Encoder(x_real, c_trg)
+                    x_fake_list.append(self.Decoder(z_vector))
 
                 # Save the translated images.
                 x_concat = torch.cat(x_fake_list, dim=3)
