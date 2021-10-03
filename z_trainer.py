@@ -90,17 +90,17 @@ class ZTrainer:
             #                             2. Train the discriminator                              #
             # =================================================================================== #
 
-            # loss = self.train_discriminator()
+            loss = self.train_discriminator()
 
             # =================================================================================== #
             #                               3. Train the generator                                #
             # =================================================================================== #
 
-            # if (i + 1) % self.solver.n_critic == 0:
-            #     g_loss = self.train_generator()
-            #     loss = {**loss, **g_loss}
+            if (i + 1) % self.solver.n_critic == 0:
+                g_loss = self.train_generator()
+                loss = {**loss, **g_loss}
 
-            loss = self.train_generator()
+            # loss = self.train_generator()
 
             # =================================================================================== #
             #                                 4. Miscellaneous                                    #
@@ -113,7 +113,7 @@ class ZTrainer:
             # Translate fixed images for debugging.
             if (i + 1) % self.solver.sample_step == 0:
                 with torch.no_grad():
-                    self.save_fixed_images(c_fixed_list, i)
+                    self.save_fixed_images(i)
 
             # Save model checkpoints.
             if (i + 1) % self.solver.model_save_step == 0:
@@ -139,20 +139,9 @@ class ZTrainer:
 
         print('Saved model checkpoints into {}...'.format(self.solver.model_save_dir))
 
-    def save_fixed_images(self, c_fixed_list, i):
-        x_fake_list = [self.x_fixed]
-        for c_fixed in c_fixed_list:
-            x_fake_list.append(self.solver.Decoder(self.solver.Encoder(self.x_fixed, c_fixed)))
-        x_concat = torch.cat(x_fake_list, dim=3)
-        sample_path = os.path.join(self.solver.sample_dir, '{}-images.jpg'.format(i + 1))
-        save_image(self.solver.denorm(x_concat.data.cpu()), sample_path, nrow=1, padding=0)
-        print('Saved real and fake images into {}...'.format(sample_path))
-
-    def save_fixed_images_old(self, c_fixed_list, i):
-        x_fake_list = [self.x_fixed]
-        for c_fixed in c_fixed_list:
-            x_fake_list.append(self.solver.G(self.x_fixed, c_fixed))
-        x_concat = torch.cat(x_fake_list, dim=3)
+    def save_fixed_images(self, i):
+        x_images = [self.x_fixed, self.solver.Decoder(self.solver.Encoder(self.x_fixed))]
+        x_concat = torch.cat(x_images, dim=3)
         sample_path = os.path.join(self.solver.sample_dir, '{}-images.jpg'.format(i + 1))
         save_image(self.solver.denorm(x_concat.data.cpu()), sample_path, nrow=1, padding=0)
         print('Saved real and fake images into {}...'.format(sample_path))
@@ -170,15 +159,15 @@ class ZTrainer:
 
     def train_generator(self):
         # Original-to-feature domain.
-        z_vector = self.solver.Encoder(self.x_real, self.c_trg)
+        z_vector = self.solver.Encoder(self.x_real)
         # Feature-to-reconstructed domain.
         x_reconst = self.solver.Decoder(z_vector)
         g_loss_rec = self.solver.lambda_rec * torch.mean(torch.abs(self.x_real - x_reconst))
         # Backward and optimize.
         self.solver.reset_grad()
         g_loss_rec.backward()
-        self.solver.Encoder.optimizer.step()
         self.solver.Decoder.optimizer.step()
+        self.solver.Encoder.optimizer.step()
         # Logging.
         g_loss = {'G/loss_rec': g_loss_rec.item()}
         return g_loss
@@ -195,6 +184,7 @@ class ZTrainer:
         self.solver.reset_grad()
         d_loss.backward()
         self.solver.D.optimizer.step()
+        self.solver.Encoder.optimizer.step()
         # Logging.
         loss = {'D/loss_cls': d_loss_cls.item()}
         return loss

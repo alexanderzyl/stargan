@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 
 
@@ -37,10 +36,10 @@ class ZModel(nn.Module):
 class ZEncoder(ZModel):
     """Generator network."""
 
-    def __init__(self, name, conv_dim=64, c_dim=5, repeat_num=6, create_optimizer=None):
+    def __init__(self, name, conv_dim=64, repeat_num=6, create_optimizer=None):
         super(ZEncoder, self).__init__(name)
 
-        layers = [nn.Conv2d(3 + c_dim, conv_dim, kernel_size=(7, 7), stride=(1, 1), padding=3, bias=False),
+        layers = [nn.Conv2d(3, conv_dim, kernel_size=(7, 7), stride=(1, 1), padding=3, bias=False),
                   nn.InstanceNorm2d(conv_dim, affine=True, track_running_stats=True), nn.ReLU(inplace=True)]
 
         # Down-sampling layers.
@@ -61,13 +60,7 @@ class ZEncoder(ZModel):
         if create_optimizer is not None:
             self.optimizer = create_optimizer(self)
 
-    def forward(self, x, c):
-        # Replicate spatially and concatenate domain information.
-        # Note that this type of label conditioning does not work at all if we use reflection padding in Conv2d.
-        # This is because instance normalization ignores the shifting (or bias) effect.
-        c = c.view(c.size(0), c.size(1), 1, 1)
-        c = c.repeat(1, 1, x.size(2), x.size(3))
-        x = torch.cat([x, c], dim=1)
+    def forward(self, x):
         return self.main(x)
 
 

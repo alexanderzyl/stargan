@@ -83,7 +83,6 @@ class ZSolver(GenericSolver):
         self.Encoder = ZEncoder(
             name='enc',
             conv_dim=self.g_conv_dim,
-            c_dim=self.c_dim,
             repeat_num=self.g_repeat_num,
             create_optimizer=lambda m: _create_opt(m, self.g_lr))
 
@@ -142,11 +141,7 @@ class ZSolver(GenericSolver):
                 c_trg_list = self.create_labels(c_org, self.c_dim, self.selected_attrs)
 
                 # Translate images.
-                x_fake_list = [x_real]
-                for c_trg in c_trg_list:
-                    z_vector = self.Encoder(x_real, c_trg)
-                    x_fake_list.append(self.Decoder(z_vector))
-
+                x_fake_list = [x_real, self.Decoder(self.Encoder(x_real))]
                 # Save the translated images.
                 x_concat = torch.cat(x_fake_list, dim=3)
                 result_path = os.path.join(self.result_dir, '{}-images.jpg'.format(i + 1))
