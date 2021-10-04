@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import time
 import datetime
@@ -51,7 +52,6 @@ class ZTrainer:
         # Fetch fixed inputs for debugging.
         data_iter = iter(data_loader)
         self.x_fixed, c_org = next(data_iter)
-        c_fixed_list = self.solver.create_labels(c_org, self.solver.c_dim, self.solver.selected_attrs)
 
         # Learning rate cache for decaying.
         lrs = self.solver.get_lrs()
@@ -113,7 +113,7 @@ class ZTrainer:
             # Translate fixed images for debugging.
             if (i + 1) % self.solver.sample_step == 0:
                 with torch.no_grad():
-                    self.save_fixed_images(i)
+                    self.save_fixed_images(i, c_org)
 
             # Save model checkpoints.
             if (i + 1) % self.solver.model_save_step == 0:
@@ -139,12 +139,19 @@ class ZTrainer:
 
         print('Saved model checkpoints into {}...'.format(self.solver.model_save_dir))
 
-    def save_fixed_images(self, i):
+    def save_fixed_images(self, i, c_org):
+        image_path = os.path.join(self.solver.sample_dir, '{}-images.jpg'.format(i + 1))
+        features_path = os.path.join(self.solver.sample_dir, '{}-features.txt'.format(i + 1))
         x_images = [self.x_fixed, self.solver.generate_image(self.x_fixed)]
         x_concat = torch.cat(x_images, dim=3)
-        sample_path = os.path.join(self.solver.sample_dir, '{}-images.jpg'.format(i + 1))
-        save_image(self.solver.denorm(x_concat.data.cpu()), sample_path, nrow=1, padding=0)
-        print('Saved real and fake images into {}...'.format(sample_path))
+        c_x = self.solver.detect_features(self.x_fixed)
+        save_image(self.solver.denorm(x_concat.data.cpu()), image_path, nrow=1, padding=0)
+        c_x = (c_x.cpu().numpy() > 0.5).astype(int)
+        c = np.empty((c_x.shape[0] + c_org.shape[0], c_x.shape[1]))
+        c[::2, :] = c_x
+        c[1::2, :] = c_org
+        np.savetxt(features_path, c, fmt='%i', header=' '.join(self.solver.selected_attrs))
+        print('Saved real and fake images into {}...'.format(image_path))
 
     def print_train_info(self, i, loss, start_time):
         et = time.time() - start_time
@@ -174,8 +181,7 @@ class ZTrainer:
 
     def train_discriminator(self):
         # Compute loss with real images.
-        z_vector = self.solver.Encoder(self.x_real)
-        out_cls = self.solver.Discriminator(z_vector)
+        out_cls = self.solver.detect_features(self.x_real)
         d_loss_cls = classification_loss(out_cls, self.label_org)
         # Compute loss for gradient penalty.
         self.alpha = torch.rand(self.x_real.size(0), 1, 1, 1)

@@ -1,3 +1,4 @@
+import numpy as np
 from generic_solver import GenericSolver
 from torchvision.utils import save_image
 import torch
@@ -138,15 +139,27 @@ class ZSolver(GenericSolver):
 
                 # Prepare input images and target domain labels.
                 x_real = x_real.to(self.device)
-                c_trg_list = self.create_labels(c_org, self.c_dim, self.selected_attrs)
 
                 # Translate images.
                 x_fake_list = [x_real, self.generate_image(x_real)]
                 # Save the translated images.
                 x_concat = torch.cat(x_fake_list, dim=3)
                 result_path = os.path.join(self.result_dir, '{}-images.jpg'.format(i + 1))
+                features_path = os.path.join(self.result_dir, '{}-features.txt'.format(i + 1))
                 save_image(self.denorm(x_concat.data.cpu()), result_path, nrow=1, padding=0)
-                print('Saved real and fake images into {}...'.format(result_path))
+
+                # detect features
+                c_x = self.detect_features(x_real)
+                c_x = (c_x.cpu().numpy() > 0.5).astype(int)
+                c = np.empty((c_x.shape[0] + c_org.shape[0], c_x.shape[1]))
+                c[::2, :] = c_x
+                c[1::2, :] = c_org
+                np.savetxt(features_path, c, fmt='%i', header=' '.join(self.selected_attrs))
+                print('Saved real and fake images and features into {}...'.format(result_path))
 
     def generate_image(self, x_real):
         return self.Decoder(self.Encoder(x_real))
+
+    def detect_features(self, x_real):
+        out_cls = self.Discriminator(self.Encoder(x_real))
+        return out_cls
