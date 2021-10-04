@@ -67,12 +67,12 @@ class ZSolver(GenericSolver):
 
     Encoder = data_on_device()
     Decoder = data_on_device()
-    D = data_on_device()
+    Discriminator = data_on_device()
 
     def iter_models(self):
         yield self.Encoder
         yield self.Decoder
-        yield self.D
+        yield self.Discriminator
 
     def build_model(self):
         """Create a generator and a discriminator."""
@@ -91,7 +91,7 @@ class ZSolver(GenericSolver):
             conv_dim=self.Encoder.out_dim,
             create_optimizer=lambda m: _create_opt(m, self.g_lr))
 
-        self.D = ZDiscriminator(
+        self.Discriminator = ZDiscriminator(
             name='D',
             conv_dim=self.Encoder.out_dim,
             c_dim=self.c_dim,
@@ -141,9 +141,12 @@ class ZSolver(GenericSolver):
                 c_trg_list = self.create_labels(c_org, self.c_dim, self.selected_attrs)
 
                 # Translate images.
-                x_fake_list = [x_real, self.Decoder(self.Encoder(x_real))]
+                x_fake_list = [x_real, self.generate_image(x_real)]
                 # Save the translated images.
                 x_concat = torch.cat(x_fake_list, dim=3)
                 result_path = os.path.join(self.result_dir, '{}-images.jpg'.format(i + 1))
                 save_image(self.denorm(x_concat.data.cpu()), result_path, nrow=1, padding=0)
                 print('Saved real and fake images into {}...'.format(result_path))
+
+    def generate_image(self, x_real):
+        return self.Decoder(self.Encoder(x_real))

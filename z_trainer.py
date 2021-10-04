@@ -140,7 +140,7 @@ class ZTrainer:
         print('Saved model checkpoints into {}...'.format(self.solver.model_save_dir))
 
     def save_fixed_images(self, i):
-        x_images = [self.x_fixed, self.solver.Decoder(self.solver.Encoder(self.x_fixed))]
+        x_images = [self.x_fixed, self.solver.generate_image(self.x_fixed)]
         x_concat = torch.cat(x_images, dim=3)
         sample_path = os.path.join(self.solver.sample_dir, '{}-images.jpg'.format(i + 1))
         save_image(self.solver.denorm(x_concat.data.cpu()), sample_path, nrow=1, padding=0)
@@ -175,7 +175,7 @@ class ZTrainer:
     def train_discriminator(self):
         # Compute loss with real images.
         z_vector = self.solver.Encoder(self.x_real)
-        out_cls = self.solver.D(z_vector)
+        out_cls = self.solver.Discriminator(z_vector)
         d_loss_cls = classification_loss(out_cls, self.label_org)
         # Compute loss for gradient penalty.
         self.alpha = torch.rand(self.x_real.size(0), 1, 1, 1)
@@ -183,7 +183,7 @@ class ZTrainer:
         d_loss = self.solver.lambda_cls * d_loss_cls
         self.solver.reset_grad()
         d_loss.backward()
-        self.solver.D.optimizer.step()
+        self.solver.Discriminator.optimizer.step()
         self.solver.Encoder.optimizer.step()
         # Logging.
         loss = {'D/loss_cls': d_loss_cls.item()}
