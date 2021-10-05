@@ -158,8 +158,10 @@ class ZSolver(GenericSolver):
                 print('Saved real and fake images and features into {}...'.format(result_path))
 
     def generate_image(self, x_real):
-        return self.Decoder(self.Encoder(x_real))
+        neutral, features = self.Encoder(x_real)
+        return self.Decoder(neutral, features)
 
     def detect_features(self, x_real):
-        out_cls = self.Discriminator(self.Encoder(x_real))
+        _, features = self.Encoder(x_real)
+        out_cls = self.Discriminator(features)
         return out_cls

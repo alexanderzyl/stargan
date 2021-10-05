@@ -39,29 +39,36 @@ class ZEncoder(ZModel):
     def __init__(self, name, conv_dim=64, repeat_num=6, create_optimizer=None):
         super(ZEncoder, self).__init__(name)
 
-        layers = [nn.Conv2d(3, conv_dim, kernel_size=(7, 7), stride=(1, 1), padding=3, bias=False),
+        l_input = [nn.Conv2d(3, conv_dim, kernel_size=(7, 7), stride=(1, 1), padding=3, bias=False),
                   nn.InstanceNorm2d(conv_dim, affine=True, track_running_stats=True), nn.ReLU(inplace=True)]
 
         # Down-sampling layers.
         curr_dim = conv_dim
         for i in range(4):
-            layers.append(nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=(4, 4), stride=(2, 2), padding=1, bias=False))
-            layers.append(nn.InstanceNorm2d(curr_dim * 2, affine=True, track_running_stats=True))
-            layers.append(nn.ReLU(inplace=True))
+            l_input.append(nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=(4, 4), stride=(2, 2), padding=1, bias=False))
+            l_input.append(nn.InstanceNorm2d(curr_dim * 2, affine=True, track_running_stats=True))
+            l_input.append(nn.ReLU(inplace=True))
             curr_dim = curr_dim * 2
 
+        # split into neutral and features
         # Bottleneck layers.
+        l_neutral = []
+        l_feutures = []
         for i in range(repeat_num):
-            layers.append(ResidualBlock(dim_in=curr_dim, dim_out=curr_dim))
+            l_neutral.append(ResidualBlock(dim_in=curr_dim, dim_out=curr_dim))
+            l_feutures.append(ResidualBlock(dim_in=curr_dim, dim_out=curr_dim))
 
         self.out_dim = curr_dim
 
-        self.main = nn.Sequential(*layers)
+        self.main = nn.Sequential(*l_input)
+        self.neutral = nn.Sequential(*l_neutral)
+        self.features = nn.Sequential(*l_feutures)
         if create_optimizer is not None:
             self.optimizer = create_optimizer(self)
 
     def forward(self, x):
-        return self.main(x)
+        repr = self.main(x)
+        return self.neutral(repr), self.features(repr)
 
 
 class ZDecoder(ZModel):
@@ -87,7 +94,8 @@ class ZDecoder(ZModel):
         if create_optimizer is not None:
             self.optimizer = create_optimizer(self)
 
-    def forward(self, x):
+    def forward(self, neutral, features):
+        x = neutral + features
         return self.main(x)
 
 

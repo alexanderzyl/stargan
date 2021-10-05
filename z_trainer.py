@@ -166,9 +166,9 @@ class ZTrainer:
 
     def train_generator(self):
         # Original-to-feature domain.
-        z_vector = self.solver.Encoder(self.x_real)
+        neutral, features = self.solver.Encoder(self.x_real)
         # Feature-to-reconstructed domain.
-        x_reconst = self.solver.Decoder(z_vector)
+        x_reconst = self.solver.Decoder(neutral, features)
         g_loss_rec = self.solver.lambda_rec * torch.mean(torch.abs(self.x_real - x_reconst))
         # Backward and optimize.
         self.solver.reset_grad()
