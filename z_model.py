@@ -112,5 +112,5 @@ class ZDiscriminator(ZModel):
             self.optimizer = create_optimizer(self)
 
     def forward(self, x):
-        h = x.mean([2, 3])
+        h = x.max(3).values.max(2).values
         return self.main(h)
