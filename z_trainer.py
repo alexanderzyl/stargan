@@ -100,7 +100,10 @@ class ZTrainer:
                 g_loss = self.train_generator()
                 loss = {**loss, **g_loss}
 
-            # loss = self.train_generator()
+            if (i + 1) % self.solver.n_critic == 0:
+                n_loss = self.train_neutral()
+                loss = {**loss, **n_loss}
+
 
             # =================================================================================== #
             #                                 4. Miscellaneous                                    #
@@ -142,7 +145,9 @@ class ZTrainer:
     def save_fixed_images(self, i, c_org):
         image_path = os.path.join(self.solver.sample_dir, '{}-images.jpg'.format(i + 1))
         features_path = os.path.join(self.solver.sample_dir, '{}-features.txt'.format(i + 1))
-        x_images = [self.x_fixed, self.solver.generate_image(self.x_fixed)]
+        x_images = [self.x_fixed,
+                    self.solver.generate_image(self.x_fixed),
+                    self.solver.generate_neutral_image(self.x_fixed)]
         x_concat = torch.cat(x_images, dim=3)
         c_x = self.solver.detect_features(self.x_fixed)
         save_image(self.solver.denorm(x_concat.data.cpu()), image_path, nrow=1, padding=0)
@@ -193,4 +198,24 @@ class ZTrainer:
         self.solver.Encoder.optimizer.step()
         # Logging.
         loss = {'D/loss_cls': d_loss_cls.item()}
+        return loss
+
+    def train_neutral(self):
+        # Compute loss with real images.
+        neutral, _ = self.solver.Encoder(self.x_real)
+        neutral_image = self.solver.Decoder(neutral)
+        out_cls = self.solver.detect_features(neutral_image)
+        neutral_cls = out_cls.zero_like()
+        n_loss_cls = classification_loss(out_cls, neutral_cls)
+        # Compute loss for gradient penalty.
+        self.alpha = torch.rand(self.x_real.size(0), 1, 1, 1)
+        # Backward and optimize.
+        d_loss = self.solver.lambda_cls * n_loss_cls
+        self.solver.reset_grad()
+        d_loss.backward()
+        self.solver.Discriminator.optimizer.step()
+        self.solver.Decoder.optimizer.step()
+        self.solver.Encoder.optimizer.step()
+        # Logging.
+        loss = {'N/loss_cls': n_loss_cls.item()}
         return loss

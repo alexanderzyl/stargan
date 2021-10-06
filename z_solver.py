@@ -161,6 +161,10 @@ class ZSolver(GenericSolver):
         neutral, features = self.Encoder(x_real)
         return self.Decoder(neutral, features)
 
+    def generate_neutral_image(self, x_real):
+        neutral, _ = self.Encoder(x_real)
+        return self.Decoder(neutral)
+
     def detect_features(self, x_real):
         _, features = self.Encoder(x_real)
         out_cls = self.Discriminator(features)

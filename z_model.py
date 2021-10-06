@@ -94,8 +94,8 @@ class ZDecoder(ZModel):
         if create_optimizer is not None:
             self.optimizer = create_optimizer(self)
 
-    def forward(self, neutral, features):
-        x = neutral + features
+    def forward(self, neutral, features=None):
+        x = neutral if features is None else neutral + features
         return self.main(x)
 
 
