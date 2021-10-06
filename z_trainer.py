@@ -205,7 +205,7 @@ class ZTrainer:
         neutral, _ = self.solver.Encoder(self.x_real)
         neutral_image = self.solver.Decoder(neutral)
         out_cls = self.solver.detect_features(neutral_image)
-        neutral_cls = out_cls.zero_like()
+        neutral_cls = torch.zeros_like(out_cls)
         n_loss_cls = classification_loss(out_cls, neutral_cls)
         # Compute loss for gradient penalty.
         self.alpha = torch.rand(self.x_real.size(0), 1, 1, 1)
